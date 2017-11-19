@@ -13,17 +13,21 @@
 # 1.c. Import the CSV file " chicago_taxi_data.csv " into R and save it by the name data. 
 # Notice the data in the file has row numbers that are redundant (so pay attention to the function arguments).
 ################################
-
+data = read.csv("chicago_taxi_data.csv")
 # 1.d Make sure the data was loaded properly by showing the first few rows of the data.
 ################################
-
+head(data)
 
 # 2.a Sample 10000 rows from the dataset without replacement. This file will be our dataset throughout the exercise. 
 # Before you sample, set your random seed to be 1. 
 ################################
+set.seed(1)
+data_sample = data[sample(nrow(data), 1000), ]
+data_sample
 
 # 2.b We will not use any of geographical columns (pickup/ dropoff - longtitude/ latitude). Delete these columns.
 ################################
+
 
 # 2.c Show the names and the data type of all the features.
 ################################
