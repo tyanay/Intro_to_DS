@@ -31,16 +31,20 @@ drops <- c("pickup_latitude", "pickup_longitude", "dropoff_latitude", "dropoff_l
 data_sample <- data_sample[ , !(names(data_sample) %in% drops)]
 colnames(data_sample)
 # 2.c Show the names and the data type of all the features.
+sapply(data_sample, class)
 ################################
 
 # 2.d. The Column pickup_census_tract has only NA values. Create a verification check for this claim. 
 #Delete the column pickup_census_tract and dropoff_census_tract from the dataset.
 #Could we have known in advanced that this column is problematic? Tip: use your answer the previous question.
 ################################
-
+data_sample$company <- factor(data_sample$company)
+levels(data_sample$pickup_census_tract)
 # 2.e What's your opinion about the current type of the column 'company'? Is it adequate?
 #If yes, explain why. It not, explain why not and change the type of this column and other similar columns.
 ################################
+data_sample$company
+levels(data_sample$company)
 
 # 2.f. Create a summary statistics of the dataset (using one-line command). 
 # What is the difference between the output for the numerical columns and the non-numeric columns?
