@@ -23,12 +23,13 @@ head(data)
 ################################
 set.seed(1)
 data_sample = data[sample(nrow(data), 1000), ]
-data_sample
 
 # 2.b We will not use any of geographical columns (pickup/ dropoff - longtitude/ latitude). Delete these columns.
 ################################
-
-
+colnames( data_sample)
+drops <- c("pickup_latitude", "pickup_longitude", "dropoff_latitude", "dropoff_longitude")
+data_sample <- data_sample[ , !(names(data_sample) %in% drops)]
+colnames(data_sample)
 # 2.c Show the names and the data type of all the features.
 ################################
 
