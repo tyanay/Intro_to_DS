@@ -10,6 +10,7 @@
 # From now on, if needed, do not use the full path, but only the name of the file within this path.
 ################################
 
+
 # 1.c. Import the CSV file " chicago_taxi_data.csv " into R and save it by the name data. 
 # Notice the data in the file has row numbers that are redundant (so pay attention to the function arguments).
 ################################
@@ -38,34 +39,65 @@ sapply(data_sample, class)
 #Delete the column pickup_census_tract and dropoff_census_tract from the dataset.
 #Could we have known in advanced that this column is problematic? Tip: use your answer the previous question.
 ################################
-data_sample$company <- factor(data_sample$company)
 levels(data_sample$pickup_census_tract)
+data_sample <- data_sample[, !(names(data_sample) %in% c("pickup_census_tract","dropoff_census_tract"))]
+names(data_sample)
+
+# We could have known that the column might be problametic, thank to the check we did to the data types of the column.
+# The Pickup Census Tract is expected to be a string (names of the census tracts), so we excpected a "factor" type column (the column was "numeric").
+
+
 # 2.e What's your opinion about the current type of the column 'company'? Is it adequate?
 #If yes, explain why. It not, explain why not and change the type of this column and other similar columns.
 ################################
-data_sample$company
+
 levels(data_sample$company)
+# The 'company' column is currently "numeric". This might be a problem, becuase the clasiffier might give a meaning to the numeric values of this column,
+# when it acctually represents an identifier for a taxi company.
+# Our assumption is that there no numeric meaning to the company ID code, and this is used only as an identifier.
+
+data_sample$company <- factor(data_sample$company)
+levels(data_sample$company)
+
 
 # 2.f. Create a summary statistics of the dataset (using one-line command). 
 # What is the difference between the output for the numerical columns and the non-numeric columns?
 ################################
+summary(data_sample)
+
+# Numircal - the output includes Mean, Min, Max, 1st, 2nd (median) and 3rd Qu. The non-numerical includes only the number of instances of the factor levels.
 
 
 # 3.a. Calculate the percentage of rows with at least one missing value (NA)
 ################################
+sum(!complete.cases(data_sample)) / nrow(data_sample)
 
 # 3.b. Delete all rows with more than 1 missing value (NA)
 ################################
+data_sample = data_sample[rowSums(is.na(data_sample)) < 2, ]
 
 # 3.c. Create a histogram of a categorical column (to your choice). Explain the findings of the chart. 
 # Pay attention that some histogram functions work only with numerical values, so a transformation is needed.
 ################################
 
+barplot(table(data_sample$payment_type))
+
+# From the given chart, we can understand that there are almost no occurences for payment types that are other than Cash or Credit Card.
+# Cash is definetly the most common way for paying.
+
 # 3.d. Choose and implement the best way to deal with the missing values in the dataset, in your opinion (according to your previous findings). 
 # As for the columns: [trip_seconds, trip_miles, trip_total] , deal with 0's (zeros) as if they were NA's .
-#Pay attention - you can decide to delete specific rows or columns, while impute some other remaining missing values. Explain all of your choices.
+# Pay attention - you can decide to delete specific rows or columns, while impute some other remaining missing values. Explain all of your choices.
 ################################
+colSums(is.na(data_sample))
 
+
+# company column - almost half of the data in the data sample is with missing company ID, and NA is the largest factor in this column.
+summary(data_sample$company)
+barplot(table(data_sample$company))
+# We wish to save this data (due to its large scale). Because of the reasons above, we have decided to create a new category for the NA rows (Company = "NA").
+data_sample$company <- addNA(data_sample$company)
+summary(data_sample$company) # Validation
 
 # 4.a. Make a Q-Q plot for each of the following columns: [trip_seconds, trip_miles, trip_total]. 
 # Explain what we can learn from a Q-Q plot about the distribution of the data.
