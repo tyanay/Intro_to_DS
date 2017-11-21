@@ -103,7 +103,9 @@ summary(company) # Validation
 # 4.a. Make a Q-Q plot for each of the following columns: [trip_seconds, trip_miles, trip_total]. 
 # Explain what we can learn from a Q-Q plot about the distribution of the data.
 ################################
-qqnorm(trip_seconds)
+qqnorm(trip_miles); qqline(trip_miles)
+qqnorm(trip_seconds); qqline(trip_miles)
+qqnorm(trip_total); qqline(trip_miles)
 # 4.b. (7) According to the Q-Q plots ,do we need to normalize these features? Which normalization function should we use for each feature, if any?
 # For each feature, in case you decided to normalize it, create a new normalized column of the feature (eg. norm.trip_seconds).
 ################################
