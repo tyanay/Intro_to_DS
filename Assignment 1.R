@@ -24,7 +24,7 @@ head(data)
 ################################
 set.seed(1)
 data_sample = data[sample(nrow(data), 1000), ]
-
+attach(data_sample)
 # 2.b We will not use any of geographical columns (pickup/ dropoff - longtitude/ latitude). Delete these columns.
 ################################
 colnames( data_sample)
@@ -39,7 +39,7 @@ sapply(data_sample, class)
 #Delete the column pickup_census_tract and dropoff_census_tract from the dataset.
 #Could we have known in advanced that this column is problematic? Tip: use your answer the previous question.
 ################################
-levels(data_sample$pickup_census_tract)
+levels(pickup_census_tract)
 data_sample <- data_sample[, !(names(data_sample) %in% c("pickup_census_tract","dropoff_census_tract"))]
 names(data_sample)
 
@@ -51,13 +51,14 @@ names(data_sample)
 #If yes, explain why. It not, explain why not and change the type of this column and other similar columns.
 ################################
 
-levels(data_sample$company)
+levels(company)
+company
 # The 'company' column is currently "numeric". This might be a problem, becuase the clasiffier might give a meaning to the numeric values of this column,
 # when it acctually represents an identifier for a taxi company.
 # Our assumption is that there no numeric meaning to the company ID code, and this is used only as an identifier.
 
-data_sample$company <- factor(data_sample$company)
-levels(data_sample$company)
+company <- factor(company)
+levels(company)
 
 
 # 2.f. Create a summary statistics of the dataset (using one-line command). 
@@ -80,7 +81,7 @@ data_sample = data_sample[rowSums(is.na(data_sample)) < 2, ]
 # Pay attention that some histogram functions work only with numerical values, so a transformation is needed.
 ################################
 
-barplot(table(data_sample$payment_type))
+barplot(table(payment_type))
 
 # From the given chart, we can understand that there are almost no occurences for payment types that are other than Cash or Credit Card.
 # Cash is definetly the most common way for paying.
@@ -93,16 +94,16 @@ colSums(is.na(data_sample))
 
 
 # company column - almost half of the data in the data sample is with missing company ID, and NA is the largest factor in this column.
-summary(data_sample$company)
-barplot(table(data_sample$company))
+summary(company)
+barplot(table(company))
 # We wish to save this data (due to its large scale). Because of the reasons above, we have decided to create a new category for the NA rows (Company = "NA").
-data_sample$company <- addNA(data_sample$company)
-summary(data_sample$company) # Validation
+company <- addNA(company)
+summary(company) # Validation
 
 # 4.a. Make a Q-Q plot for each of the following columns: [trip_seconds, trip_miles, trip_total]. 
 # Explain what we can learn from a Q-Q plot about the distribution of the data.
 ################################
-
+qqnorm(trip_seconds)
 # 4.b. (7) According to the Q-Q plots ,do we need to normalize these features? Which normalization function should we use for each feature, if any?
 # For each feature, in case you decided to normalize it, create a new normalized column of the feature (eg. norm.trip_seconds).
 ################################
