@@ -92,23 +92,26 @@ barplot(table(data_sample$payment_type))
 colSums(is.na(data_sample))
 
 
-# company column - almost half of the data in the data sample is with missing company ID, and NA is the largest factor in this column.
+# company column
+#almost half of the data in the data sample is with missing company ID, and NA is the largest factor in this column.
+# We can see this with the following summery:
 summary(data_sample$company)
-barplot(table(data_sample$company))
-# We wish to save this data (due to its large scale). Because of the reasons above, we have decided to create a new category for the NA rows (Company = "NA").
+                  
+barplot(table(data_sample$company, useNA = c("ifany")))
+
+# We wish to keep this data (due to its large scale). Because of the reasons above, we have decided to create a new category for the NA rows (Company = "NA").
 data_sample$company <- addNA(data_sample$company)
 summary(data_sample$company) # Validation
 
 # 4.a. Make a Q-Q plot for each of the following columns: [trip_seconds, trip_miles, trip_total]. 
 # Explain what we can learn from a Q-Q plot about the distribution of the data.
 ################################
-<<<<<<< HEAD
+
+
 qqnorm(trip_miles); qqline(trip_miles)
 qqnorm(trip_seconds); qqline(trip_miles)
 qqnorm(trip_total); qqline(trip_miles)
-=======
 
->>>>>>> parent of 96a7b8f... Refactor- attach data_sample to R memory
 # 4.b. (7) According to the Q-Q plots ,do we need to normalize these features? Which normalization function should we use for each feature, if any?
 # For each feature, in case you decided to normalize it, create a new normalized column of the feature (eg. norm.trip_seconds).
 ################################
