@@ -23,7 +23,7 @@ head(data)
 # Before you sample, set your random seed to be 1. 
 ################################
 set.seed(1)
-data_sample = data[sample(nrow(data), 1000), ]
+data_sample = data[sample(nrow(data), 10000), ]
 
 # 2.b We will not use any of geographical columns (pickup/ dropoff - longtitude/ latitude). Delete these columns.
 ################################
@@ -92,40 +92,177 @@ barplot(table(data_sample$payment_type))
 colSums(is.na(data_sample))
 
 
-# company column
-#almost half of the data in the data sample is with missing company ID, and NA is the largest factor in this column.
-# We can see this with the following summery:
-summary(data_sample$company)
-                  
+############# Company column
+length(data_sample$company[is.na(data_sample$company)]) / length(data_sample$company)
+# More than third of the data in the data sample is with missing company ID, and NA is the largest factor in this column.
+# We can visualize this with the following barplot (notice the left bar):
 barplot(table(data_sample$company, useNA = c("ifany")))
 
-# We wish to keep this data (due to its large scale). Because of the reasons above, we have decided to create a new category for the NA rows (Company = "NA").
+# In the following code, we will try to fill the NAs in the company column for taxis that appear somewhere else in the dataframe with a company.
+# Maybe in one row, some taxi_id has an NA value for company, but in another row, the same taxi_id has a company.
+
+# take the unique values of taxi and company
+df_taxi <- unique(data_sample[!is.na(data_sample$company), c('taxi_id', 'company')])
+
+# Remove all the taxi_id that has more than 1 company related to them:
+df_taxi2 <- aggregate(data_sample$company, list(taxi_id=data_sample$taxi_id), FUN= function(x) length(x))
+df_taxi2 <- df_taxi2[df_taxi2$x < 2,'taxi_id']
+df_taxi <- df_taxi[(df_taxi$taxi_id %in% df_taxi2),]
+
+# Fill the missing NAs in the data_sample with the relevant company from the df_taxi
+data_sample$company[is.na(data_sample$company)] <- df_taxi$company[match(data_sample$taxi_id[is.na(data_sample$company)], df_taxi$taxi_id)]
+
+# Check if the amount of NAs has changed:
+length(data_sample$company[is.na(data_sample$company)]) / length(data_sample$company)
+# Unfortunately, the amount of NAs did not change.
+# We will check if there are taxis without companies that appear in the new taxi-company dataframe we created 
+df_taxi[df_taxi$taxi_id %in% data_sample[is.na(data_sample$company) ,c('taxi_id')], ]
+# 0 matches - this explains the results (no NA filled).
+
+# Conclusion - We wish to keep this data due to its large scale, and because there might be a meaning to the "NA" value in the company column (e.g. independant drivers without a company).
+# We have decided to create a new category for the NA rows (Company = "NA").
 data_sample$company <- addNA(data_sample$company)
 summary(data_sample$company) # Validation
+
+
+########### pickup_community_area
+# there are only 15 rows without pickup community area value. This is 0.15% of the data. We have decided to remove those rows due to the small scale.
+data_sample <- data_sample[!is.na(data_sample$pickup_community_area),]
+
+########### dropoff_community_area
+#lets give a look on the data:
+data_sample[is.na(data_sample$dropoff_community_area),]
+#we see that there are a lot of rows where both "trip_miles"=0 and "dropoff_community_area=Na" we want to remove these rows:
+data_sample <- data_sample[!(is.na(data_sample$dropoff_community_area) & (data_sample$trip_miles==0)),]
+summary(data_sample$dropoff_community_area) #now we have just 55 NAs
+#we assume that short trips probably stay in the same community area (dropoff_area=pickup_area) we want to check what is "short" in point of view of our data
+same_area_trips <- data_sample[data_sample$pickup_community_area==data_sample$dropoff_community_area & !is.na(data_sample$dropoff_community_area),]
+same_area_trips
+mean(same_area_trips$trip_miles)
+median(same_area_trips$trip_miles)
+#we see that in our data the mean and the median of same area trips are: 0.9 and 0.6, we will use the median (0.6) as a threshold
+data_sample[is.na(data_sample$dropoff_community_area) & data_sample$trip_miles<=0.6,]$dropoff_community_area <- data_sample[is.na(data_sample$dropoff_community_area) & data_sample$trip_miles<=0.6,]$pickup_community_area
+summary(data_sample$dropoff_community_area) #now we have just 46 NAs
+#we assume that long trips probably go out from Chicago we want to check what is "long" in point of view of our data
+#on a map of Chicago we can see that the size of the city in miles is apro 25x5 (except area 76- that is not connected to the rest of the city)
+#reference to the Chicago community areas map:https://en.wikipedia.org/wiki/Community_areas_in_Chicago
+# lets see if we can find trips above 25 miles that not include area 76:
+data_sample[data_sample$trip_miles>25.0 & data_sample$pickup_community_area!='76' & data_sample$dropoff_community_area!='76' & !is.na(data_sample$dropoff_community_area),]
+#we found 11 trips- so the assumption that trips above 25 miles going out of the city is wrong
+#we have decided to remove the 46 rows that stay with NA value in the dropoff_community_area, we can't impute those values without more information on the domain
+# impute with probability or the most freaquent value make no sense on this case.
+data_sample <- data_sample[!is.na(data_sample$dropoff_community_area),]
+data_sample[is.na(data_sample$dropoff_community_area),] #validation
+
+#### Taxi_id
+data_sample[data_sample$taxi_id==0,]
+# we have only 2 rows with no taxi id (equls to zero).
+# we will remove these rows
+data_sample <- data_sample[!data_sample$taxi_id==0,]
+
+#### trip_total and fare:
+# check the rows with trip_total = 0
+data_sample[data_sample$trip_total==0,]
+# only 5 rows, with unreliable data (diffrences between times, community areas). remove these 5 rows:
+data_sample <- data_sample[!data_sample$trip_total==0,]
+# by that, we have also dealt with the 0 fare coloumn:
+data_sample[data_sample$fare==0,]
+
+### Trip seconds and trip miles.
+
+# accourding to the CITY OF CHICAGO TAXICAB FARE RATES and INFORMATION,
+# the fare rate for a ride in 2016 is:
+#     Flag Pull (Base Fare)	$ 3.25
+#     Each additional mile	$ 2.25
+#     Every 36 seconds of time elapsed	$ 0.20
+# reference: https://www.cityofchicago.org/city/en/depts/bacp/supp_info/2012_passenger_information.html
+
+# This information will help us in 2 ways:
+# 1.  A "trip" that took 0 seconds, and 0 miles, and its fair is 3.25$, means that there was no actual trip.
+#     we will remove these rows:
+data_sample <- data_sample[!((data_sample$trip_seconds==0) & (data_sample$trip_miles==0) & (data_sample$fare==3.25)),]
+
+# 2.  For Rows that have 0 miles, or 0 time (but not both!), and has fair, we can calculate the diffrences using this formula:
+#     fare = 3.25 + trip_miles * 2.25 + floor(trip_seconds / 36) * 0.20
+#       a. trip_miles = (fare - 3.25 - floor(trip_seconds/36)*0.20) / 2.25  ** this shall be rounded by 0.1 (liek the original data)
+#       b. trip_seconds = (fare - 3.25 - trip_miles * 2.25 ) * 36 / 0.20 + 18 ** notice that this will not be an exact match due to the floor function, we have added 18, which is the median between 0 and 36
+
+# a. trip_miles:
+
+nrow(data_sample[data_sample$trip_miles==0 & data_sample$trip_seconds!=0, ])
+
+data_sample <- data_sample[!is.na(data_sample$X), ]  # remove NA values (if there are any...)
+
+data_sample[data_sample$trip_miles==0 & data_sample$trip_seconds!=0, ]$trip_miles <- round((data_sample[data_sample$trip_miles==0 & data_sample$trip_seconds!=0, ]$fare - 3.25 - floor(data_sample[data_sample$trip_miles==0 & data_sample$trip_seconds!=0, ]$trip_seconds / 36) * 0.2) / 2.25 , 1)
+
+nrow(data_sample[data_sample$trip_miles<=0 & data_sample$trip_seconds!=0, ])  # we have calculated the trip miles for ~1200 rows!
+
+# remove rows that equals 0 or less:
+data_sample <- data_sample[!(data_sample$trip_miles<=0), ]
+
+
+# b.trip_seconds:
+data_sample[data_sample$trip_seconds==0, ]$trip_seconds <- round(( data_sample[data_sample$trip_seconds==0, ]$fare - 3.25 -data_sample[data_sample$trip_seconds==0, ]$trip_miles * 2.25 ) * 36 / 0.2 + 18)
+# remove the data with seconds equals 0 or less
+data_sample <- data_sample[data_sample$trip_seconds > 0, ]
+
 
 # 4.a. Make a Q-Q plot for each of the following columns: [trip_seconds, trip_miles, trip_total]. 
 # Explain what we can learn from a Q-Q plot about the distribution of the data.
 ################################
 
+###trip_miles distribution:
+qqnorm(data_sample$trip_miles); qqline(data_sample$trip_miles) ##clearly the data not from a "Normal" distribution
+#trying to understand the distribution
+hist(data_sample$trip_miles)
+hist(data_sample[data_sample$trip_miles<120,]$trip_miles)# lets take a closer look
+hist(data_sample[data_sample$trip_miles<20,]$trip_miles) # and closer
 
-qqnorm(trip_miles); qqline(trip_miles)
-qqnorm(trip_seconds); qqline(trip_miles)
-qqnorm(trip_total); qqline(trip_miles)
+###trip_seconds distribution:
+qqnorm(data_sample$trip_seconds); qqline(data_sample$trip_seconds) #clearly the data not from a "Normal" distribution
+# trying to understand the distribution:
+hist(data_sample$trip_seconds) 
+hist(data_sample[data_sample$trip_seconds<3000,]$trip_seconds) # lets take a closer look  
+hist(data_sample[data_sample$trip_seconds<1500,]$trip_seconds) # and closer
+###trip_total distribution:
+qqnorm(data_sample$trip_total); qqline(data_sample$trip_total)
+#We can see that almost all the data appears on the "Normal line"
+hist(data_sample$trip_total)
+hist(data_sample[data_sample$trip_total<500,]$trip_total) # lets take a closer look  
+hist(data_sample[data_sample$trip_total<15,]$trip_total) # a look to the "center of mass" of the distribution- now it looks closer to "Normal"
+# we decided that its close enogh- we will manage the "total_trip" as a Normal distribution
 
 # 4.b. (7) According to the Q-Q plots ,do we need to normalize these features? Which normalization function should we use for each feature, if any?
 # For each feature, in case you decided to normalize it, create a new normalized column of the feature (eg. norm.trip_seconds).
 ################################
+#We need to normalize the numeric features becuase we don't want that the model we gonna use will give a meaning to the "scale" of the data (e.g' seconds, Km, $)
+#for the "trip_total" column we will use Z transformation becuase its close enogh to Normal
+#for trip_miles and trip_seconds we will use another scaling that not based on "Normal" assume
 
+###normalize trip_total:
+data_sample['norm.trip_total'] <- scale(data_sample$trip_total) #scale is a function that return the standardized scores of a vector
+data_sample['log.trip_total'] <- log(data_sample$trip_total)
+###normalize trip_miles
+#due to 5.b question we will use here also in "scale", and in question 5.b we will use min-max transformation
+data_sample['norm.trip_miles'] <- scale(data_sample$trip_miles)
+###normalize trip_seconds
+#due to 5.b question we will use here also in "scale", and in question 5.b we will use min-max transformation
+data_sample['norm.trip_seconds'] <- scale(data_sample$trip_seconds)
 
 # 5.a. Create a boxplot of the normalized trip_miles column (or the original column in case you chose not to normalize) Remove the column's 
 # outliers from the data based on the box plot. Hint: use the boxplot object.
 ################################
+boxplot(data_sample$norm.trip_miles)['out']
+data_sample <- data_sample[!(data_sample$norm.trip_miles %in% (boxplot(data_sample$norm.trip_miles, outline = FALSE)$out)),]
+summary(data_sample$norm.trip_miles)
 
 # 5.b. Implement a min-max transformation on the normalized columns of [trip_seconds, trip_miles, trip_total] 
 # (or the original columns in case you chose not to normalize). 
 # Create new column with the transformed data (eg. minmax.trip_seconds) 
 ################################
-
+data_sample['minmax.norm.trip_miles'] <- (data_sample$norm.trip_miles- min(data_sample$norm.trip_miles))/(max(data_sample$norm.trip_miles)-min(data_sample$norm.trip_miles)) 
+data_sample['minmax.norm.trip_seconds'] <- (data_sample$norm.trip_seconds- min(data_sample$norm.trip_seconds))/(max(data_sample$norm.trip_seconds)-min(data_sample$norm.trip_seconds)) 
+data_sample['minmax.norm.trip_total'] <- (data_sample$norm.trip_total- min(data_sample$norm.trip_total))/(max(data_sample$norm.trip_total)-min(data_sample$norm.trip_total)) 
 
 #6.a. Create a correlation matrix of all the relevant numerical features. In addition, Display a correlation plot for this matrix. 
 # Write 3 business insights we can learn from the correlation matrix.
