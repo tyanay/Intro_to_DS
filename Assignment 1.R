@@ -309,10 +309,13 @@ library(corrplot)
 corrplot(data_cor, method = "circle")
 
 ###insights:
-#1. tips are not highly correleted to each of the oters features
-# we assume the  passenger tip policy not connected to the distance or time of the ride, we need to
-#remmember here that cash tips usually not recorded
-#2. 
+#1. tips are not correleted to distance and time- driver that want enlarge the tips ammount shouldn't
+#looking for long rides
+#2. as expected, fare highly connected to time and distnce of the trip- the fare mainly calculats from
+#distance and time
+#3. the total cost is highly correleted with the fare (0.85)- most of the total cost is the fare.
+
+
 #6.b. Create 5 different statistical outputs based on the dataset. Visualize at least 3 of them. Add an explanation. Try to be creative.
 #Examples:
 #  1.	A bar chart that displays the average and median amount of trip_total, for each payment_type. 
