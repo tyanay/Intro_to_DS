@@ -247,7 +247,6 @@ hist(data_sample[data_sample$trip_total<15,]$trip_total) # a look to the "center
 
 ###normalize trip_total:
 data_sample['norm.trip_total'] <- scale(data_sample$trip_total) #scale is a function that return the standardized scores of a vector
-data_sample['log.trip_total'] <- log(data_sample$trip_total)
 ###normalize trip_miles
 #due to 5.b question we will use here also in "scale", and in question 5.b we will use min-max transformation
 data_sample['norm.trip_miles'] <- scale(data_sample$trip_miles)
