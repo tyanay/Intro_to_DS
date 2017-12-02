@@ -2,7 +2,8 @@
 #ID 2: 
 
 ## Download all relevant packages and libraries:
-
+#install.packages("DMwR")
+#install.packages("corrplot")
 
 # 1.a. Download and extract the data from Moodle into a local folder designated for this assignment.
 
@@ -58,6 +59,11 @@ levels(data_sample$company)
 
 data_sample$company <- factor(data_sample$company)
 levels(data_sample$company)
+
+#and the same for similar columns
+data_sample$pickup_community_area <- factor(data_sample$pickup_community_area)
+data_sample$dropoff_community_area <- factor(data_sample$dropoff_community_area)
+data_sample$taxi_id <- factor(data_sample$taxi_id)
 
 
 # 2.f. Create a summary statistics of the dataset (using one-line command). 
@@ -260,14 +266,53 @@ summary(data_sample$norm.trip_miles)
 # (or the original columns in case you chose not to normalize). 
 # Create new column with the transformed data (eg. minmax.trip_seconds) 
 ################################
-data_sample['minmax.norm.trip_miles'] <- (data_sample$norm.trip_miles- min(data_sample$norm.trip_miles))/(max(data_sample$norm.trip_miles)-min(data_sample$norm.trip_miles)) 
-data_sample['minmax.norm.trip_seconds'] <- (data_sample$norm.trip_seconds- min(data_sample$norm.trip_seconds))/(max(data_sample$norm.trip_seconds)-min(data_sample$norm.trip_seconds)) 
-data_sample['minmax.norm.trip_total'] <- (data_sample$norm.trip_total- min(data_sample$norm.trip_total))/(max(data_sample$norm.trip_total)-min(data_sample$norm.trip_total)) 
+data_sample['minmax.norm.trip_miles'] <- as.vector((data_sample$norm.trip_miles- min(data_sample$norm.trip_miles))/(max(data_sample$norm.trip_miles)-min(data_sample$norm.trip_miles))) 
+data_sample['minmax.norm.trip_seconds'] <- as.vector((data_sample$norm.trip_seconds- min(data_sample$norm.trip_seconds))/(max(data_sample$norm.trip_seconds)-min(data_sample$norm.trip_seconds))) 
+data_sample['minmax.norm.trip_total'] <- as.vector((data_sample$norm.trip_total- min(data_sample$norm.trip_total))/(max(data_sample$norm.trip_total)-min(data_sample$norm.trip_total))) 
+
+
+#5.c. Using the 3 columns you created, you will use a hierarchical-clustering method, followed by density-based method.  
+#First, use hierarchical-clustering method to evaluate the probability of each instance to be an outlier. 
+#Exclude all instances with 0.75 chance or higher. Hint: use "DMwR" package. 
+#Then, using LOF, pick k=10 and remove all instances that their LOF score is above 1.4. Hint: use "Rlof" package.
+
+###using hierarchical-clustering method to evaluate the probability of each instance to be an outlier
+library(DMwR)
+minmax_columns <- c("minmax.norm.trip_seconds","minmax.norm.trip_miles","minmax.norm.trip_total")
+out <- outliers.ranking(data=data_sample[,minmax_columns],test.data=NULL,clus=list(dist='euclidean',alg='hclust',meth='average'))
+out$prob.outliers
+
+###Exclude all instances with 0.75 chance or higher
+data_sample <- data_sample[out$prob.outliers<0.75,]
+nrow(data_sample)
+
+#using LOF to remove all instances that their LOF score is above 1.4 (k=10)
+data_sample <- data_sample[lofactor(data_sample[,minmax_columns], k=10)<=1.4,]
+nrow(data_sample)
 
 #6.a. Create a correlation matrix of all the relevant numerical features. In addition, Display a correlation plot for this matrix. 
 # Write 3 business insights we can learn from the correlation matrix.
 ################################
+sapply(data_sample, class)
+# now "tolls" contains just "0", we decided to remove it.
+data_sample$tolls <- NULL
 
+### Corrwlation metrix of all the numeric features (for trip_miles, trip_seconds and trip_total we use just
+### the minmax columns):
+cor_columns <- c("fare", "tips", "extras", "minmax.norm.trip_seconds","minmax.norm.trip_miles","minmax.norm.trip_total")
+
+data_cor <- cor(data_sample[, cor_columns])
+data_cor
+
+###plot the correlation:
+library(corrplot)
+corrplot(data_cor, method = "circle")
+
+###insights:
+#1. tips are not highly correleted to each of the oters features
+# we assume the  passenger tip policy not connected to the distance or time of the ride, we need to
+#remmember here that cash tips usually not recorded
+#2. 
 #6.b. Create 5 different statistical outputs based on the dataset. Visualize at least 3 of them. Add an explanation. Try to be creative.
 #Examples:
 #  1.	A bar chart that displays the average and median amount of trip_total, for each payment_type. 
