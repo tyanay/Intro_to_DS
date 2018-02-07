@@ -1,0 +1,324 @@
+#ID 1: 305187296
+#ID 2: 203302021
+
+# Installations:
+#install.packages('rpart')
+#install.packages('rpart.plot')
+#install.packages('caret')
+#install.packages('e1071')
+#install.packages('randomForest')
+#installed.packages('ggplot2')
+#install.packages('class')
+#install.packages('stats ')
+#install.packages('verification')
+#install.packages('ROSE')
+
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(caret)
+library(e1071)
+library(randomForest)
+library(class)
+library(stats)
+library(ROSE)
+################################
+
+# 1. (15) Preprocessing  
+##############
+
+# 1.1 (0) Set a working directory, load the data file and name it 'data'.
+################################
+#setwd("C:\Users\tomer\Documents\Git\Intro_to_DS\Ex2")
+data <- read.csv("census income.csv")
+head(data,5)
+
+# 1.2 (1) Set your random seed to 1 so that models comparisons will not be affected by randomness.
+#######################
+set.seed(1)
+
+# 1.3 (2) Replace all '?' values with NA's, then delete rows from the current dataset, 
+# in order to receive a full dataset (no NA's).
+#######################
+data[data == '?'] <- NA
+data <- data[complete.cases(data),]
+
+# 1.4 (3) Create a binary 'label' column, representing the 'income' column. '>50k' will receive a positive label.
+# Make sure to remove / replace the original 'income' column.
+#######################
+data['income'] <- as.vector(data['income']== '<=50K')
+head(data['income'])
+# 1.5 (2) Remove the columns 'capital.gain' and 'fnlwgt' from the dataset.
+#######################
+data <- data[,!(names(data) %in% c('capital.gain', 'fnlwgt'))]
+head(data,5)
+# 1.6 (4) Scale and center the numeric features (standardization - mean of 0 and a standard deviation of 1).
+# Afterwards, examine the correlation between them. 
+# Explain in your words the main idea behind removing highly correlated features 
+# (it doesn't necessarily mean you need to get rid of features in our case). 
+#######################
+numeric_features <- c('age', 'education.num', 'capital.loss', 'hours.per.week')
+data[,numeric_features] <- scale(data[,numeric_features])
+head(data)
+# 1.7 (3) Split the data into a test set (30%) and a train set (70%) with respect to the label.
+################################
+data1 <- data[data['income'] == TRUE,]
+dt1 <- sort(sample(nrow(data1), nrow(data1)*0.7))
+train1 <- data1[dt1,]
+test1 <- data1[-dt1,]
+
+data2 <- data[data['income'] == FALSE,]
+dt2 <- sort(sample(nrow(data2), nrow(data2)*0.7))
+train2 <- data2[dt2,]
+test2 <- data2[-dt2,]
+
+train <- rbind(train1, train2)
+test <- rbind(test1, test2)
+
+# Clean unrelevant DFs
+remove(data1, data2, train1, test1, train2, test2)
+
+# Seperate TEST to X and Y
+test.x = test[,-13]
+test.y = test[,13]
+
+data.x = data[,-13]
+# 2. (20) Decision Tree and Random Forest
+
+#######################
+
+# 2.1 (6) Grow a decision tree using all the features. Predict the labels for the test set with the tree you've built.
+# Generate the confusion matrix for the prediction, and plot it. Explain your findings. 
+#######################
+
+fit <- rpart(income ~ .,
+             data=train,
+             method="class")
+
+# plot tree 
+
+plot(fit, uniform=TRUE, 
+     main="Classification Tree for Income")
+text(fit, use.n=TRUE, all=TRUE, cex=.8)
+
+prediction <- predict(fit, test.x, type = "class")
+
+confusionMatrix(prediction, test$income, positive = 'TRUE')
+
+# We can see that the accuracy is not bad (0.8245). Most of the misclassifications are at the predictions of income that is below 50k.
+# The number of Reference - False, Prediction - True is very high, especially when looking only at the tootal number of False in our data. (thus the low Specificity).
+# This means that the module has a difficulty in recognizing a person that has an income of below 50k.
+
+
+
+# 2.2 (6) Train a simple random forest of 101 trees over the training data, using all the features.
+# Predict the labels for the test set with the forest you've built.
+# Generate the confusion matrix for the prediction. Explain your findings (in comparison to the previous model). 
+#######################
+
+#summary(train)
+train$income <- as.factor(as.integer(train$income))
+test$income <- as.factor(as.integer(test$income))
+fit <- randomForest(income ~ .,
+                    data=train,
+                    importance = TRUE,
+                    ntree = 101)
+
+prediction <- predict(fit, test.x, type = "class")
+
+
+confusionMatrix(prediction, test$income, positive = '1')
+
+# The RF is worse than the decision tree (Acc 0.7648 vs Acc 0.8245).
+# One value that we need to refer to (in favor for the RF) is the specificity, that had changed dramaticly (0.8726 in RF vs 0.5752 in DT).
+# This means that the RF is better with the "<50k" values.
+
+# We would like to check a possible overfit (we were not asked for it in the execise, but we are curios).
+# We will check our model evalutions on the train set.
+train.x = train[,-13]
+
+prediction <- predict(fit, train.x, type = "class")
+confusionMatrix(prediction, train$income, positive = '1')
+
+# The accuracy on the Train set is 0.8183, which is a bit higher than the accuracy on the test set (0.7648), yet not in a way that indicates overfit.
+
+
+# 2.3 (5) Build another model using random forest, but this time use a regularization method - 
+# choose a built in argument that can help you control the trees depth, and create grid search to find the best
+# value among at least 5 different values (in terms of accuracy). 
+# Explain your findings (in comparison to the previous models). 
+#######################
+
+max.nodes.list = c(2,4,8,16,32,64,128,256)
+acc.list = c()
+
+for (i in max.nodes.list)
+{
+  fit <- randomForest(income ~ .,
+                      data=train,
+                      importance = TRUE,
+                      maxnodes = i,
+                      ntree = 101)
+  
+  prediction <- predict(fit, test.x, type = "class")
+  
+  RF.acc = confusionMatrix(prediction, test$income)$overall[1]
+  
+  acc.list <- c(acc.list, RF.acc)
+  cat('For RF with max nodes = ', i)
+  print(RF.acc)
+}
+
+# We have recieved best accuracy with Max Nodes = 128 (maximum tree depth : log_2(128) = 7). Accuracy = 0.8361326.
+
+
+# 2.4 (3) Plot a feature importance chart (or charts) for the best model (from the previous question).
+# Explain your findings.
+#######################
+fit.bestPrams = randomForest(income ~ .,
+                   data=train,
+                   importance = TRUE,
+                   maxnodes = 128,
+                   ntree = 101)
+
+
+importance(fit.bestPrams)
+varImpPlot(fit.bestPrams, main="Feature importance plot")
+
+# 3. (5) Transformation - In order to build some other more "numerical" models, we will convert all factorial features
+# (besides the label) to be numeric. This is despite the fact that most of the features has no numerical meaning.
+# In addition to the numerical transformation, apply standardization on all the columns.
+# Explain the importance of scaling before modeling.
+#######################
+test.x <- scale(sapply(test.x, as.numeric))
+test[,-13] <- scale(sapply(test[,-13], as.numeric))
+train[,-13]<- scale(sapply(train[,-13], as.numeric))
+train.x <- scale(sapply(train.x, as.numeric))
+
+data.x <- scale(sapply(data.x, as.numeric))
+
+# It is important to scale the data before modeling because a lot of the models using metrics of distance in the n-dimensional features space.
+# Those models can be very affected by the features "units of measurement".
+# In order to neutralize this effect, we scale the features to the same mean and std.
+# However, it is important to say that we lose information in the scaling process
+
+
+# 4(10) KNN
+#######################
+
+# 4.1 (10) Build a KNN model using the training data, and predict the test labels, using 3 significantly different K's.
+# Compare and discuss the performances of the models. 
+#######################
+
+#train the models
+knn_small_k <- knn(train.x, test.x, cl = train$income,  k = 3, prob = TRUE)
+knn_mid_k <- knn(train.x, test.x, cl = train$income,  k = 27, prob = TRUE)
+knn_big_k <- knn(train.x, test.x, cl = train$income,  k = 81, prob = TRUE)
+
+#compare the models
+print('For K=3: ')
+confusionMatrix(knn_small_k, test$income)$table
+print('For K=27: ')
+confusionMatrix(knn_mid_k, test$income)$table
+print('For K=81: ')
+confusionMatrix(knn_big_k, test$income)$table
+
+print('Accuracy')
+print('For K=3: ')
+confusionMatrix(knn_small_k, test$income)$overall[1]
+print('For K=27: ')
+confusionMatrix(knn_mid_k, test$income)$overall[1]
+print('For K=81: ')
+confusionMatrix(knn_big_k, test$income)$overall[1]
+
+#we can see that the best accuracy is when K = 27, we can assume that in the lower k (k=3) the model is too sensitive
+# and small movements in the space change the prediction- the model overfit to the train data.
+# in the larger k (k=81) the model is not enough sensitive and movments in the space that need to change the classification
+# not affect  the prediction
+
+# 5 (30) PCA and ROC
+#######################
+
+# 5.1 (10) Find the principal components of the train set.
+# Display the explained variance of each PC. 
+#######################
+data.x <- as.data.frame(data.x)
+pca <-prcomp(data.x)
+exp_var <- pca$sdev^2 / sum(pca$sdev^2)
+components <- seq(1, 12, by=1) 
+barplot(exp_var, width = 1, names.arg =  components, xlab = 'Component number', ylab = "expleined variance")
+
+#plot cumulative graph of the explained variance
+plot(cumsum(exp_var), type="s")
+cumsum(exp_var[1:7])
+
+# 5.2 (10)
+# Using the PC's that explain 70% of the variance, create (by projection of the PC's) a new trainset and testset.
+# Fit a simple knn model with k=5, and display its confusion matrix.
+#######################
+
+#We need the first 7 PCs in order to reach a 70% variance explanation.
+reduced_data <- as.data.frame(pca$x[,0:7])
+
+reduced_data <- cbind(reduced_data, as.factor(as.integer(data$income)))
+colnames(reduced_data)[8] <- "income"
+
+reduced_data1 <- reduced_data[reduced_data['income'] == '1',]
+reduced_data2 <- reduced_data[reduced_data['income'] == '0',]
+
+# Create the new Train and Test sets (with the same indexes)
+train1 <- reduced_data1[dt1,]
+test1 <- reduced_data1[-dt1,]
+train2 <- reduced_data2[dt2,]
+test2 <- reduced_data2[-dt2,]
+
+pca.train.x <- rbind(train1, train2)
+pca.test.x <- rbind(test1, test2)
+
+# Clean unrelevant DFs
+remove(train1, test1, train2, test2, reduced_data1, reduced_data2)
+
+# KNN model (k=5)
+pca.knn <- knn(pca.train.x, pca.test.x, cl = train$income,  k = 5, prob = TRUE)
+
+#compare the models
+print('For K=5: ')
+confusionMatrix(pca.knn, test$income)$table
+pca.knn
+# 5.3 (10)
+# Display the ROC curve of the PCA-KNN model.
+roc.curve(response = test$income, predicted = pca.knn)
+
+# In general, what can we learn from a ROC chart? 
+#######################
+#In binary classification models we use thresholds to determine which class to predict to which object- the final threshold depends on the buisness "cost"
+#we can use the ROC and the AUC metric to understand the power of our trained model
+#without the dependency on the thresholds we have when we see a confusion matrix, understand the trade-off between different thresholds
+# and in addition to compare between models using the AUC
+
+
+
+# 6 (20) K-means
+#######################
+
+# 6.1 (10) Using the 4 most important features according to question 2.4, run k-means on the complete dataset.
+# Generate only 4 clusters. Make sure number of iterations is higher than 10.
+
+# We choose to focus on the Mean Decrease in Gini, which is the total decrease in node impurities from splitting on the variable, averaged over all trees.
+# The 4 most important features accourding to question #2.4: 'relationship','marital.status','education','occupation'
+
+cols <- c('relationship','marital.status','education','occupation')
+
+
+x <- as.data.frame(data.x[,cols]) #4 most important features according to question 2.4
+kmeans_4 <- kmeans(x, centers = 4, iter.max = 20) #??? number of iterations > 10?
+#######################
+
+# 6.2 (10) plot the clusters and the centers of the clusters.
+# What can we learn from the chart about the clusters and the chosen number of clusters?
+#######################
+pca.kmeans <- prcomp(x)
+reduced_data_kmeans <- as.data.frame(pca.kmeans$x[,0:2])
+plot(reduced_data_kmeans$PC1, reduced_data_kmeans$PC2, col = c("red", "blue", "green", "orange")[kmeans_4$cluster], xlab = 'PC1', ylab = 'PC2')
+
