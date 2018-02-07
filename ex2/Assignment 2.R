@@ -2,16 +2,16 @@
 #ID 2: 203302021
 
 # Installations:
-#install.packages('rpart')
-#install.packages('rpart.plot')
-#install.packages('caret')
-#install.packages('e1071')
-#install.packages('randomForest')
-#installed.packages('ggplot2')
-#install.packages('class')
-#install.packages('stats ')
-#install.packages('verification')
-#install.packages('ROSE')
+install.packages('rpart')
+install.packages('rpart.plot')
+install.packages('caret')
+install.packages('e1071')
+install.packages('randomForest')
+installed.packages('ggplot2')
+install.packages('class')
+install.packages('stats ')
+install.packages('verification')
+install.packages('ROSE')
 
 library(ggplot2)
 library(rpart)
@@ -171,7 +171,7 @@ for (i in max.nodes.list)
 }
 
 # We have recieved best accuracy with Max Nodes = 128 (maximum tree depth : log_2(128) = 7). Accuracy = 0.8361326.
-
+# Comparing to previous models, using these parameters we recieve the most accurate model so far.
 
 # 2.4 (3) Plot a feature importance chart (or charts) for the best model (from the previous question).
 # Explain your findings.
@@ -185,6 +185,9 @@ fit.bestPrams = randomForest(income ~ .,
 
 importance(fit.bestPrams)
 varImpPlot(fit.bestPrams, main="Feature importance plot")
+
+
+
 
 # 3. (5) Transformation - In order to build some other more "numerical" models, we will convert all factorial features
 # (besides the label) to be numeric. This is despite the fact that most of the features has no numerical meaning.
@@ -232,9 +235,9 @@ confusionMatrix(knn_mid_k, test$income)$overall[1]
 print('For K=81: ')
 confusionMatrix(knn_big_k, test$income)$overall[1]
 
-#we can see that the best accuracy is when K = 27, we can assume that in the lower k (k=3) the model is too sensitive
+# We can see that the best accuracy is when K = 27, we can assume that in the lower k (k=3) the model is too sensitive
 # and small movements in the space change the prediction- the model overfit to the train data.
-# in the larger k (k=81) the model is not enough sensitive and movments in the space that need to change the classification
+# In the larger k (k=81) the model is not enough sensitive and movments in the space that need to change the classification
 # not affect  the prediction
 
 # 5 (30) PCA and ROC
@@ -291,10 +294,10 @@ pca.knn
 roc.curve(response = test$income, predicted = pca.knn)
 
 # In general, what can we learn from a ROC chart? 
-#######################
+
 #In binary classification models we use thresholds to determine which class to predict to which object- the final threshold depends on the buisness "cost"
-#we can use the ROC and the AUC metric to understand the power of our trained model
-#without the dependency on the thresholds we have when we see a confusion matrix, understand the trade-off between different thresholds
+# we can use the ROC and the AUC metric to understand the power of our trained model
+# without the dependency on the thresholds we have when we see a confusion matrix, understand the trade-off between different thresholds
 # and in addition to compare between models using the AUC
 
 
